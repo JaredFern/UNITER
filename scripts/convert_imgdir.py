@@ -2,7 +2,7 @@
 Copyright (c) Microsoft Corporation.
 Licensed under the MIT license.
 
-convert image npz to LMDB
+convert image npz/npy to LMDB
 """
 import argparse
 import glob
@@ -23,9 +23,49 @@ msgpack_numpy.patch()
 
 
 def _compute_nbb(img_dump, conf_th, max_bb, min_bb, num_bb):
-    num_bb = max(min_bb, (img_dump['conf'] > conf_th).sum())
+    num_bb = max(min_bb, (img_dump > conf_th).sum())
     num_bb = min(max_bb, num_bb)
     return int(num_bb)
+
+
+def _normalize_bb(bbox, width, height):
+    bbox_x = np.array([bbox[:, 0], bbox[:, 0] + bbox[:, 2], bbox[:, 2]]) / width
+    bbox_y = np.array([bbox[:, 1], bbox[:, 1] + bbox[:, 3], bbox[:, 3]]) / height
+    return np.vstack((bbox_x[0], bbox_y[0],
+                      bbox_x[1], bbox_y[1],
+                      bbox_x[2], bbox_y[2])).T
+
+@curry
+def load_npy(conf_th, max_bb, min_bb, num_bb, fname, keep_all=False):
+    try:
+        img_dump = np.load(fname, allow_pickle=True)
+        if keep_all:
+            nbb = None
+        else:
+            nbb = _compute_nbb(img_dump['cls_prob'], conf_th, max_bb, min_bb, num_bb)
+
+        dump = {}
+        dump['norm_bb'] = _normalize_bb(img_dump['bbox'], img_dump['width'], img_dump['height'])
+
+        for key, arr in img_dump.items():
+            if type(arr) != np.ndarray:
+                continue
+            if arr.dtype == np.float32:
+                arr = arr.astype(np.float16)
+            if arr.ndim == 2:
+                dump[key] = arr[:nbb, :]
+            elif arr.ndim == 1:
+                dump[key] = arr[:nbb]
+            else:
+                raise ValueError('wrong ndim')
+    except Exception as e:
+        # corrupted file
+        print(f'corrupted file {fname}', e)
+        dump = {}
+        nbb = 0
+
+    name = basename(fname)
+    return name, dump, nbb
 
 
 @curry
@@ -35,7 +75,7 @@ def load_npz(conf_th, max_bb, min_bb, num_bb, fname, keep_all=False):
         if keep_all:
             nbb = None
         else:
-            nbb = _compute_nbb(img_dump, conf_th, max_bb, min_bb, num_bb)
+            nbb = _compute_nbb(img_dump['conf'], conf_th, max_bb, min_bb, num_bb)
         dump = {}
         for key, arr in img_dump.items():
             if arr.dtype == np.float32:
@@ -87,7 +127,7 @@ def main(opts):
         os.makedirs(f'{opts.output}/{split}')
     env = lmdb.open(f'{opts.output}/{split}/{db_name}', map_size=1024**4)
     txn = env.begin(write=True)
-    files = glob.glob(f'{opts.img_dir}/*.npz')
+    files = glob.glob(f'{opts.img_dir}/*.npy')
     load = load_npz(opts.conf_th, opts.max_bb, opts.min_bb, opts.num_bb,
                     keep_all=opts.keep_all)
     name2nbb = {}

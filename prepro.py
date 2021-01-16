@@ -2,7 +2,7 @@
 Copyright (c) Microsoft Corporation.
 Licensed under the MIT license.
 
-preprocess NLVR annotations into LMDB
+preprocess annotations into LMDB
 """
 import argparse
 import json
@@ -26,6 +26,30 @@ def bert_tokenize(tokenizer, text):
             continue
         ids.extend(tokenizer.convert_tokens_to_ids(ws))
     return ids
+
+
+def process_cc(json_file, db, tokenizer, missing=None, split="train"):
+    id2len, txt2img = {}, {}
+    for image in tqdm(json_file['images'], desc='processing Conceptual Captions'):
+        if image["split"] != split: continue
+        img_id = image["imgid"]
+        img_fname = image['filename']
+        npy_fname = img_fname[:-4] + ".npy"
+        for sentence in image["sentences"]:
+            if missing and img_fname in missing: continue
+            example = sentence
+            input_ids = tokenizer(example['raw'])
+            example['id'] = f"{image['split']}-{img_fname[:-4]}"
+            example['imgid'] = image['imgid']
+            example['split'] = image['split']
+            example['img_fname'] = npy_fname
+            example['raw_fname'] = img_fname
+            example['input_ids'] = input
+
+            txt2img[img_id] = img_fname
+            id2len[img_id] = len(input_ids)
+            db[example['id']] = example
+    return id2len, txt2img
 
 
 def process_nlvr2(jsonl, db, tokenizer, missing=None):
@@ -79,7 +103,7 @@ def main(opts):
                 missing_imgs = set(json.load(open(opts.missing_imgs)))
             else:
                 missing_imgs = None
-            id2lens, txt2img = process_nlvr2(ann, db, tokenizer, missing_imgs)
+            id2lens, txt2img = process_cc(ann, db, tokenizer, missing_imgs)
 
     with open(f'{opts.output}/id2len.json', 'w') as f:
         json.dump(id2lens, f)
