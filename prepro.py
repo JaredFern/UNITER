@@ -4,6 +4,7 @@ Licensed under the MIT license.
 
 preprocess annotations into LMDB
 """
+import numpy as np
 import argparse
 import json
 import os
@@ -50,6 +51,28 @@ def process_cc(json_file, db, tokenizer, missing=None, split="train"):
             txt2img[img_id] = img_fname
             id2len[img_id] = len(input_ids)
             db[example['id']] = example
+    return id2len, txt2img
+
+
+def process_coco(json_file, annot_dir, db, tokenizer, missing=None):
+    id2len, txt2img = {}, {}
+    json_file = json.load(json_file)
+    for annot in json_file['annotations']:
+        example = annot
+        img_fname = f"{annot['image_id'].zfill(12)}.npy"
+        input_ids = tokenizer(annot['caption'])
+
+        txt_feat_fname = os.path.join(
+                annot_dir, f"{annot['image_id']}_{annot['id']}.npy")
+        txt_features = np.load(txt_feat_fname)
+
+        txt2img[img_fname] = img_fname
+        id2len[img_fname] = len(input_ids)
+
+        example['img_fname'] = img_fname
+        example['input_ids'] = input_ids
+        example['caption_features'] = txt_features
+        db[example['id']] = example
     return id2len, txt2img
 
 
@@ -104,7 +127,8 @@ def main(opts):
                 missing_imgs = set(json.load(open(opts.missing_imgs)))
             else:
                 missing_imgs = None
-            id2lens, txt2img = process_cc(ann, db, tokenizer, missing_imgs, opts.split)
+            id2lens, txt2img = process_coco(
+                    ann, opts.annot_dir, db, tokenizer, missing_imgs)
 
     with open(f'{opts.output}/id2len.json', 'w') as f:
         json.dump(id2lens, f)
@@ -120,6 +144,7 @@ if __name__ == '__main__':
                         help='some training image features are corrupted')
     parser.add_argument('--output', required=True,
                         help='output dir of DB')
+    parser.add_argument('--annot_dir', type=str, default=None)
     parser.add_argument('--toker', default='bert-base-cased',
                         help='which BERT tokenizer to used')
     parser.add_argument('--split', default='train')
