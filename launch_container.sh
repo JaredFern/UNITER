@@ -1,10 +1,11 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-TXT_DB="/home/jaredfer/data/txt_db"
-IMG_DIR="/home/jaredfer/data/img_db"
-OUTPUT="/home/jaredfer/data/storage"
-PRETRAIN_DIR="/home/jaredfer/data/pretrained"
+TXT_DB="/home/jaredfer/data/datasets/txt_db"
+IMG_DIR="/home/jaredfer/data/datasets/img_db"
+CORPORA_DIR="/home/jaredfer/data/corpora"
+OUTPUT="/home/jaredfer/data/models/storage"
+PRETRAIN_DIR="/home/jaredfer/data/models/pretrained"
 
 if [ -z $CUDA_VISIBLE_DEVICES ]; then
     CUDA_VISIBLE_DEVICES='all'
