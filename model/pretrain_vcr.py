@@ -31,6 +31,13 @@ class UniterForPretrainingForVCR(UniterForPretraining):
         self.cls = BertOnlyMLMHead(
             self.uniter.config, self.uniter.embeddings.word_embeddings.weight)
 
+    def _compute_masked_hidden_nosqueeze(self, hidden, mask):
+        """ get only the masked region (don't compute unnecessary hiddens) """
+        mask = mask.unsqueeze(-1).expand_as(hidden)
+        hidden_masked = hidden[mask].contiguous().view(-1, hidden.size(-1))
+        return hidden_masked
+
+
     def forward(self, batch, task, compute_loss=True):
         batch = defaultdict(lambda: None, batch)
         input_ids = batch['input_ids']
@@ -107,7 +114,6 @@ class UniterForPretrainingForVCR(UniterForPretraining):
         masked_output = self._compute_masked_hidden(sequence_output,
                                                     img_mask_tgt)
         prediction_feat = self.feat_regress(masked_output)
-
         if compute_loss:
             mrfr_loss = F.mse_loss(prediction_feat, feat_targets,
                                    reduction='none')

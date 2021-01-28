@@ -41,6 +41,7 @@ NUM_SPECIAL_TOKENS = 81
 def main(opts):
     hvd.init()
     n_gpu = hvd.size()
+    # device = torch.device("cpu")
     device = torch.device("cuda", hvd.local_rank())
     torch.cuda.set_device(hvd.local_rank())
     rank = hvd.rank()
@@ -95,7 +96,7 @@ def main(opts):
     model.generator.init_type_embedding()
     model.generator.init_word_embedding(NUM_SPECIAL_TOKENS)
     model.discriminator.init_type_embedding()
-    model.discriminator.init_type_embeding()
+    model.discriminator.init_word_embedding(NUM_SPECIAL_TOKENS)
     model.to(device)
     model.train()
     # make sure every process has same model parameters in the beginning
@@ -237,11 +238,11 @@ def validate_mlm(model, val_loader):
     st = time()
     for i, batch in enumerate(val_loader):
         scores = model(batch, task='mlm', compute_loss=False)
-        labels = batch['txt_labels']
-        labels = labels[labels != -1]
-        loss = F.cross_entropy(scores, labels, reduction='sum')
+        labels = (batch['txt_labels'] != -1)
+        loss = F.binary_cross_entropy_with_logits(scores.half(), labels.half(), reduction='sum')
         val_loss += loss.item()
-        n_correct += (scores.max(dim=-1)[1] == labels).sum().item()
+        corrupted_predictions = scores > 0.5
+        n_correct += (labels == corrupted_predictions).sum().item()
         n_word += labels.numel()
     val_loss = sum(all_gather_list(val_loss))
     n_correct = sum(all_gather_list(n_correct))
@@ -253,7 +254,7 @@ def validate_mlm(model, val_loader):
                'acc': acc,
                'tok_per_s': n_word / tot_time}
     LOGGER.info(f"validation finished in {int(tot_time)} seconds, "
-                f"acc: {acc * 100:.2f}")
+                f"acc: {acc * 100:.2f}, loss: {val_loss}")
     return val_log
 
 
@@ -269,19 +270,27 @@ def validate_mrfr(model, val_loader):
     LOGGER.info("start running MRFR validation...")
     val_loss = 0
     n_feat = 0
+    n_correct = 0
     st = time()
     for i, batch in enumerate(val_loader):
-        loss = model(batch, task='mrfr', compute_loss=True)
-        val_loss += loss.sum().item() / IMG_DIM
-        n_feat += batch['img_mask_tgt'].sum().item()
+        labels = batch['img_masks']
+        scores = model(batch, task='mrfr', compute_loss=True)
+        corrupted_predictions = scores > 0.5
+        loss = F.binary_cross_entropy_with_logits(
+                scores.half(), labels.half(), reduction='sum')
+        val_loss += loss.sum().item()
+        n_correct += (labels == corrupted_predictions).sum().item()
+        n_feat += batch['img_masks'].numel()
     val_loss = sum(all_gather_list(val_loss))
     n_feat = sum(all_gather_list(n_feat))
+    acc = n_correct / n_feat
     tot_time = time() - st
     val_loss /= n_feat
     val_log = {'loss': val_loss,
+               'acc': acc,
                'feat_per_s': n_feat / tot_time}
     LOGGER.info(f"validation finished in {int(tot_time)} seconds, "
-                f"loss: {val_loss:.2f}")
+                f"loss: {val_loss:.2f}, acc: {acc * 100:.2f}")
     return val_log
 
 

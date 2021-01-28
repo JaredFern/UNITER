@@ -194,6 +194,25 @@ def main(opts):
         print("Unexpected_keys:", list(unexpected_keys))
         print("Missing_keys:", list(missing_keys))
         model.load_state_dict(matched_state_dict, strict=False)
+    elif opts.checkpoint_from == "vcr_electra":
+        checkpoint = torch.load(opts.checkpoint)
+        state_dict = checkpoint.get('model_state', checkpoint)
+        matched_state_dict = {}
+        unexpected_keys = set()
+        missing_keys = set()
+        for name, param in model.named_parameters():
+            missing_keys.add(name)
+        for key, data in state_dict.items():
+            model_type, param_name = key.split(".", 1)
+            if model_type == "discriminator" and param_name in missing_keys:
+                matched_state_dict[param_name] = data
+                missing_keys.remove(param_name)
+            else:
+                unexpected_keys.add(key)
+        print("Unexpected_keys:", list(unexpected_keys))
+        print("Missing_keys:", list(missing_keys))
+        model.load_state_dict(matched_state_dict, strict=False)
+
     del checkpoint
     model.to(device)
     # make sure every process has same model parameters in the beginning
@@ -410,7 +429,7 @@ if __name__ == "__main__":
                         help="pretrained model")
     parser.add_argument("--checkpoint_from",
                         default='pretrain', type=str,
-                        choices=['pretrain', 'vcr_pretrain'],
+                        choices=['pretrain', 'vcr_pretrain', 'vcr_electra'],
                         help="which setting is checkpoint from")
 
     parser.add_argument(
