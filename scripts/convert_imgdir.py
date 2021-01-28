@@ -78,6 +78,7 @@ def load_clip_npy(bboxes, fname):
         dump = {}
         dump['features'] = np.load(fname, allow_pickle=True)
         dump['norm_bb'] = bboxes
+        dump['conf'] = np.ones((len(dump['features']), 1))
     except Exception as e:
         print(f'corrupted file {fname}', e)
         dump = {}
@@ -148,7 +149,7 @@ def main(opts):
     txn = env.begin(write=True)
     files = glob.glob(f'{opts.img_dir}/*.npy')
     if opts.feature_format == 'npy_patches':
-        info = np.load(opts.info_file, allow_pickle=True)
+        info = np.load(opts.info_file, allow_pickle=True).item()
         bboxes = _normalize_bb(info['bbox'], info['image_width'],
                                info['image_height'], format='xyxy')
         load = load_clip_npy(bboxes)

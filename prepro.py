@@ -57,9 +57,9 @@ def process_cc(json_file, db, tokenizer, missing=None, split="train"):
 def process_coco(json_file, annot_dir, db, tokenizer, missing=None):
     id2len, txt2img = {}, {}
     json_file = json.load(json_file)
-    for annot in json_file['annotations']:
+    for annot in tqdm(json_file['annotations']):
         example = annot
-        img_fname = f"{annot['image_id'].zfill(12)}.npy"
+        img_fname = f"{str(annot['image_id']).zfill(12)}.npy"
         input_ids = tokenizer(annot['caption'])
 
         txt_feat_fname = os.path.join(
@@ -69,6 +69,8 @@ def process_coco(json_file, annot_dir, db, tokenizer, missing=None):
         txt2img[img_fname] = img_fname
         id2len[img_fname] = len(input_ids)
 
+        example['id'] = str(example['id'])
+        example['image_id'] = str(example['image_id'])
         example['img_fname'] = img_fname
         example['input_ids'] = input_ids
         example['caption_features'] = txt_features

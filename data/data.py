@@ -79,7 +79,7 @@ class DetectFeatLmdb(object):
 
     def _compute_nbb(self):
         name2nbb = {}
-        fnames = json.loads(self.txn.get(key=b'__keys__').decode('utf-8'))
+        fnames = json.loads(self.txn.get(key=b'__keys__').tobytes())
         for fname in tqdm(fnames, desc='reading images'):
             dump = self.txn.get(fname.encode('utf-8'))
             if self.compress:
