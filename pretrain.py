@@ -357,13 +357,13 @@ def main(opts):
 
             if global_step % opts.valid_steps == 0:
                 LOGGER.info(f'Step {global_step}: start validation')
-                validate(model, val_dataloaders)
+                validate(model, val_dataloaders, opts.img_dim)
                 model_saver.save(model, global_step)
         if global_step >= opts.num_train_steps:
             break
     if global_step % opts.valid_steps != 0:
         LOGGER.info(f'Step {global_step}: start validation')
-        validate(model, val_dataloaders, opts.image_dim)
+        validate(model, val_dataloaders, opts.img_dim)
         model_saver.save(model, global_step)
 
 
