@@ -40,17 +40,19 @@ def process_cc(json_file, db, tokenizer, missing=None, split="train"):
         for sentence in image["sentences"]:
             if missing and img_fname in missing: continue
             example = sentence
+            id_ = f"{image['split']}-{img_fname[:-4]}"
             input_ids = tokenizer(example['raw'])
-            example['id'] = f"{image['split']}-{img_fname[:-4]}"
-            example['imgid'] = image['imgid']
+
+            example['id'] = id_
+            example['imgid'] = img_id
             example['split'] = image['split']
             example['img_fname'] = npy_fname
             example['raw_fname'] = img_fname
             example['input_ids'] = input_ids
 
-            txt2img[img_id] = img_fname
-            id2len[img_id] = len(input_ids)
-            db[example['id']] = example
+            txt2img[id_] = img_fname
+            id2len[id_] = len(input_ids)
+            db[id_] = example
     return id2len, txt2img
 
 
@@ -59,6 +61,7 @@ def process_coco(json_file, annot_dir, db, tokenizer, missing=None):
     json_file = json.load(json_file)
     for annot in tqdm(json_file['annotations']):
         example = annot
+        id_ = str(example['id'])
         img_fname = f"{str(annot['image_id']).zfill(12)}.npy"
         input_ids = tokenizer(annot['caption'])
 
@@ -66,10 +69,10 @@ def process_coco(json_file, annot_dir, db, tokenizer, missing=None):
                 annot_dir, f"{annot['image_id']}_{annot['id']}.npy")
         txt_features = np.load(txt_feat_fname)
 
-        txt2img[img_fname] = img_fname
-        id2len[img_fname] = len(input_ids)
+        txt2img[id_] = img_fname
+        id2len[id_] = len(input_ids)
 
-        example['id'] = str(example['id'])
+        example['id'] = id_
         example['image_id'] = str(example['image_id'])
         example['img_fname'] = img_fname
         example['input_ids'] = input_ids
