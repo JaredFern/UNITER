@@ -66,7 +66,7 @@ def process_coco(json_file, annot_dir, db, tokenizer, missing=None):
         input_ids = tokenizer(annot['caption'])
 
         txt_feat_fname = os.path.join(
-                annot_dir, f"{annot['image_id']}_{annot['id']}.npy")
+                annot_dir, f"{annot['image_id']}_{id_}.npy")
         txt_features = np.load(txt_feat_fname)
 
         txt2img[id_] = img_fname
