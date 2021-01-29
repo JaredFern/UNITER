@@ -145,7 +145,6 @@ def main(opts):
         db_name += '_compressed'
     if not exists(f'{opts.output}/{split}'):
         os.makedirs(f'{opts.output}/{split}')
-    print(f'Writing lmdb to {opts.output}/{split}/{db_name}')
     env = lmdb.open(f'{opts.output}/{split}/{db_name}', map_size=1024**4)
     txn = env.begin(write=True)
     files = glob.glob(f'{opts.img_dir}/*.npy')
@@ -157,7 +156,7 @@ def main(opts):
     elif opts.feature_format == 'npy':
         load = load_npy(opts.conf_th, opts.max_bb, opts.min_bb, opts.num_bb,
                 keep_all=opts.keep_all)
-    elif opts.feature_format == 'npz':
+    elif opts.feature_formaty == 'npz':
         load = load_npz(opts.conf_th, opts.max_bb, opts.min_bb, opts.num_bb,
                 keep_all=opts.keep_all)
     name2nbb = {}

@@ -40,17 +40,19 @@ def process_cc(json_file, db, tokenizer, missing=None, split="train"):
         for sentence in image["sentences"]:
             if missing and img_fname in missing: continue
             example = sentence
+            id_ = f"{image['split']}-{img_fname[:-4]}"
             input_ids = tokenizer(example['raw'])
-            example['id'] = f"{image['split']}-{img_fname[:-4]}"
-            example['imgid'] = image['imgid']
+
+            example['id'] = id_
+            example['imgid'] = img_id
             example['split'] = image['split']
             example['img_fname'] = npy_fname
             example['raw_fname'] = img_fname
             example['input_ids'] = input_ids
 
-            txt2img[img_id] = img_fname
-            id2len[img_id] = len(input_ids)
-            db[example['id']] = example
+            txt2img[id_] = img_fname
+            id2len[id_] = len(input_ids)
+            db[id_] = example
     return id2len, txt2img
 
 

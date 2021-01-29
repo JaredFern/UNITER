@@ -1,6 +1,7 @@
 {
     "model_config": "/src/config/uniter-base.json",
     "output_dir": "/storage/pretrain/coco-fs-base-test",
+    "checkpoint": "/pretrain/uniter-base-init.pt",
     "img_dim": 768,
     "mrm_prob": 0.15,
     "itm_neg_prob": 0.5,
@@ -36,7 +37,7 @@
                 "/txt/coco_train_2017.db/"
             ],
             "img": [
-                "/img/clip/train2017"
+                "/img/coco/clip/train2017"
             ],
             "tasks": [
                 "itm",
@@ -57,7 +58,7 @@
                 "/txt/coco_val_2017.db/"
             ],
             "img": [
-                "/img/clip/val2017"
+                "/img/coco/clip/val2017/"
             ],
             "tasks": [
                 "itm",
