@@ -41,8 +41,10 @@ NUM_SPECIAL_TOKENS = 81
 def main(opts):
     hvd.init()
     n_gpu = hvd.size()
-    # device = torch.device("cpu")
-    device = torch.device("cuda", hvd.local_rank())
+    if opts.cpu:
+        device = torch.device("cpu")
+    else:
+        device = torch.device("cuda", hvd.local_rank())
     torch.cuda.set_device(hvd.local_rank())
     rank = hvd.rank()
     opts.rank = rank
@@ -87,12 +89,11 @@ def main(opts):
 
     # Prepare model
     if opts.checkpoint:
-        checkpoint = torch.load(opts.checkpoint)
+        ckpt = torch.load(opts.checkpoint)
     else:
-        checkpoint = {}
-    model = UniterForElectraPretraining.from_pretrained(
-        opts.model_config, checkpoint,
-        img_dim=IMG_DIM, img_label_dim=IMG_LABEL_DIM)
+        ckpt = {}
+    model = UniterForElectraPretraining(
+        opts.model_config, ckpt, img_dim=IMG_DIM, img_label_dim=IMG_LABEL_DIM)
     model.generator.init_type_embedding()
     model.generator.init_word_embedding(NUM_SPECIAL_TOKENS)
     model.discriminator.init_type_embedding()
@@ -417,7 +418,7 @@ if __name__ == "__main__":
     parser.add_argument('--n_workers', type=int, default=4,
                         help="number of data workers")
     parser.add_argument('--pin_mem', action='store_true', help="pin memory")
-
+    parser.add_argument('--cpu', action='store_true', help="Train on CPU")
     # can use config files
     parser.add_argument('--config', required=True, help='JSON config files')
 

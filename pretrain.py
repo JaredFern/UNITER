@@ -168,7 +168,10 @@ def create_dataloaders(datasets, is_train, opts, all_img_dbs=None):
 def main(opts):
     hvd.init()
     n_gpu = hvd.size()
-    device = torch.device("cuda", hvd.local_rank())
+    if opts.device == "cpu":
+        device = torch.device("cpu")
+    elif opts.device == "gpu":
+        device = torch.device("cuda", hvd.local_rank())
     torch.cuda.set_device(hvd.local_rank())
     rank = hvd.rank()
     opts.rank = rank
@@ -615,6 +618,7 @@ if __name__ == "__main__":
                              "learning rate warmup for.")
 
     # device parameters
+    parser.add_argument('--device', type=str, default="gpu")
     parser.add_argument('--seed', type=int, default=42,
                         help="random seed for initialization")
     parser.add_argument('--fp16', action='store_true',

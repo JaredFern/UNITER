@@ -85,11 +85,12 @@ class UniterDiscriminatorForElectraPretraining(UniterForPretrainingForVCR):
         return logits
 
 
-class UniterForElectraPretraining(UniterPreTrainedModel):
-    def __init__(self, config, img_dim, img_label_dim):
-        super().__init__(config)
-        self.generator = UniterForPretrainingForVCR(config, img_dim, img_label_dim)
-        self.discriminator = UniterDiscriminatorForElectraPretraining(config, img_dim, img_label_dim)
+class UniterForElectraPretraining(nn.Module):
+    def __init__(self, config, ckpt, img_dim, img_label_dim):
+        super(UniterForElectraPretraining, self).__init__()
+        self.generator = UniterForPretrainingForVCR.from_pretrained(
+            config, ckpt, img_dim, img_label_dim)
+        self.discriminator = UniterDiscriminatorForElectraPretraining.from_pretrained(config, ckpt, img_dim, img_label_dim)
         self.gumbel_dist = torch.distributions.gumbel.Gumbel(0., 1.)
         self.electra_loss = ElectraLoss()
 
@@ -118,7 +119,7 @@ class UniterForElectraPretraining(UniterPreTrainedModel):
                 is_replaced[is_mlm_applied] = (gen_tokens != txt_labels[is_mlm_applied])
             disc_logits = self.discriminator.forward_mlm(
                 generated, position_ids, txt_type_ids, img_feat, img_pos_feat,
-                attention_mask, gather_index, is_replaced, Falsrome)
+                attention_mask, gather_index, is_replaced, False)
             if compute_loss:
                 return self.electra_loss.forward(
                     gen_logits, disc_logits, attention_mask, txt_labels,
@@ -137,7 +138,6 @@ class UniterForElectraPretraining(UniterPreTrainedModel):
                 gen_feats = img_feat.clone()
                 gen_feats[img_masks] = mrfr_gen_feats
                 is_replaced = img_masks.clone()
-            import pdb; pdb.set_trace()
             mrfr_disc_logits = self.discriminator.forward_mrfr(
                 input_ids, position_ids, txt_type_ids, img_feat, img_pos_feat,
                 attention_mask, gather_index, img_masks, img_mask_tgt,
