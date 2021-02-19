@@ -20,4 +20,4 @@ docker run --gpus '"'device=$CUDA_VISIBLE_DEVICES'"' --ipc=host --rm -it \
     --mount src=$IMG_DIR,dst=/img,type=bind \
     --mount src=$CORPORA_DIR,dst=/corpora,type=bind,readonly \
     -e NVIDIA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES \
-    -w /src jaredfern/uniter /usr/bin/zsh
+    -w /src jaredfer/uniter /usr/bin/zsh

@@ -57,6 +57,7 @@ class ItmDataset(DetectFeatTxtTokDataset):
         self.img_db = img_db
 
         self.txt_lens, self.ids = get_ids_and_lens(txt_db)
+        import pdb; pdb.set_trace() 
         self.all_imgs = list(set(txt_db[id_]['img_fname'] for id_ in self.ids))
 
         self.neg_sample_p = neg_sample_p
