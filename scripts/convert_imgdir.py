@@ -12,13 +12,13 @@ import multiprocessing as mp
 import os
 from os.path import basename, exists
 
-from cytoolz import curry
-import numpy as np
-from tqdm import tqdm
 import lmdb
-
 import msgpack
 import msgpack_numpy
+import numpy as np
+from cytoolz import curry
+from tqdm import tqdm
+
 msgpack_numpy.patch()
 
 
@@ -39,10 +39,11 @@ def _normalize_bb(bbox, width, height, format='xywh'):
                       bbox_x[1], bbox_y[1],
                       bbox_x[2], bbox_y[2])).T
 
+
 @curry
 def load_npy(conf_th, max_bb, min_bb, num_bb, fname, keep_all=False):
     try:
-        img_dump = np.load(fname, allow_pickle=True)
+        img_dump = np.load(fname, allow_pickle=True).item()
         if keep_all:
             nbb = None
         else:
@@ -50,7 +51,7 @@ def load_npy(conf_th, max_bb, min_bb, num_bb, fname, keep_all=False):
 
         dump = {}
         dump['norm_bb'] = _normalize_bb(
-                img_dump['bbox'], img_dump['width'], img_dump['height'])
+            img_dump['bbox'], img_dump['image_width'], img_dump['image_height'])
 
         for key, arr in img_dump.items():
             if type(arr) != np.ndarray:
@@ -72,20 +73,26 @@ def load_npy(conf_th, max_bb, min_bb, num_bb, fname, keep_all=False):
     name = basename(fname)
     return name, dump, nbb
 
+
 @curry
-def load_clip_npy(bboxes, fname):
+def load_clip_npy(bboxes, feature_type, fname):
     try:
         dump = {}
-        dump['features'] = np.load(fname, allow_pickle=True)
-        dump['norm_bb'] = bboxes
+        if feature_type == 'patches':
+            dump['features'] = np.load(fname, allow_pickle=True)[1:]
+            dump['norm_bb'] = bboxes
+            nbb = 49
+        elif feature_type == 'cls':
+            dump['features'] = np.load(fname, allow_pickle=True)[0]
+            dump['norm_bb'] = bboxes
+            nbb = 1
         dump['conf'] = np.ones((len(dump['features']), 1))
     except Exception as e:
         print(f'corrupted file {fname}', e)
         dump = {}
-        nbb = 0
 
     name = basename(fname)
-    return name, dump, None
+    return name, dump, nbb
 
 
 @curry
@@ -150,15 +157,18 @@ def main(opts):
     files = glob.glob(f'{opts.img_dir}/*.npy')
     if opts.feature_format == 'npy_patches':
         info = np.load(opts.info_file, allow_pickle=True).item()
-        bboxes = _normalize_bb(info['bbox'], info['image_width'],
+        if opts.feature_type == "cls":
+            bboxes = np.array([[0, 0, 1, 1, 1, 1]])
+        else:
+            bboxes = _normalize_bb(info['bbox'], info['image_width'],
                                info['image_height'], format='xyxy')
-        load = load_clip_npy(bboxes)
+        load = load_clip_npy(bboxes, opts.feature_type)
     elif opts.feature_format == 'npy':
         load = load_npy(opts.conf_th, opts.max_bb, opts.min_bb, opts.num_bb,
-                keep_all=opts.keep_all)
-    elif opts.feature_formaty == 'npz':
+                        keep_all=opts.keep_all)
+    elif opts.feature_format == 'npz':
         load = load_npz(opts.conf_th, opts.max_bb, opts.min_bb, opts.num_bb,
-                keep_all=opts.keep_all)
+                        keep_all=opts.keep_all)
     name2nbb = {}
     with mp.Pool(opts.nproc) as pool, tqdm(total=len(files)) as pbar:
         for i, (fname, features, nbb) in enumerate(
@@ -200,6 +210,7 @@ if __name__ == '__main__':
                         help='keep all features, overrides all following args')
     parser.add_argument('--feature_format', choices=['npy', 'npz', 'npy_patches'],
                         help='format of the feature file/associated metadata')
+    parser.add_argument('--feature_type', choices=['patches', 'cls'])
     parser.add_argument('--conf_th', type=float, default=0.2,
                         help='threshold for dynamic bounding boxes '
                              '(-1 for fixed)')

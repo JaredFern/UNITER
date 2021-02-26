@@ -218,7 +218,7 @@ def main(opts):
         checkpoint = {}
     model = UniterForPretraining.from_pretrained(
         opts.model_config, checkpoint,
-        img_dim=IMG_DIM, img_label_dim=IMG_LABEL_DIM)
+        img_dim=opts.img_dim, img_label_dim=IMG_LABEL_DIM)
     model.to(device)
     model.train()
     # make sure every process has same model parameters in the beginning
@@ -367,14 +367,14 @@ def main(opts):
         model_saver.save(model, global_step)
 
 
-def validate(model, val_dataloaders):
+def validate(model, val_dataloaders, img_dim):
     model.eval()
     for task, loader in val_dataloaders.items():
         LOGGER.info(f"validate on {task} task")
         if task.startswith('mlm'):
             val_log = validate_mlm(model, loader)
         elif task.startswith('mrfr'):
-            val_log = validate_mrfr(model, loader)
+            val_log = validate_mrfr(model, loader, img_dim)
         elif task.startswith('mrc'):
             val_log = validate_mrc(model, loader, task)
         elif task.startswith('itm'):
@@ -424,14 +424,14 @@ def accuracy_count(out, labels):
 
 
 @torch.no_grad()
-def validate_mrfr(model, val_loader):
+def validate_mrfr(model, val_loader, img_dim):
     LOGGER.info("start running MRFR validation...")
     val_loss = 0
     n_feat = 0
     st = time()
     for i, batch in enumerate(val_loader):
         loss = model(batch, task='mrfr', compute_loss=True)
-        val_loss += loss.sum().item() / IMG_DIM
+        val_loss += loss.sum().item() / img_dim
         n_feat += batch['img_mask_tgt'].sum().item()
     val_loss = sum(all_gather_list(val_loss))
     n_feat = sum(all_gather_list(n_feat))
@@ -582,6 +582,7 @@ if __name__ == "__main__":
                         help='min number of bounding boxes')
     parser.add_argument('--num_bb', type=int, default=36,
                         help='static number of bounding boxes')
+    parser.add_argument('--img_dim', type=int, default=IMG_DIM)
 
     # training parameters
     parser.add_argument("--train_batch_size", default=4096, type=int,
