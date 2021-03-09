@@ -83,7 +83,7 @@ def load_clip_npy(bboxes, feature_type, fname):
             dump['norm_bb'] = bboxes
             nbb = 49
         elif feature_type == 'cls':
-            dump['features'] = np.load(fname, allow_pickle=True)[0]
+            dump['features'] = np.load(fname, allow_pickle=True)[None, 0, :]
             dump['norm_bb'] = bboxes
             nbb = 1
         dump['conf'] = np.ones((len(dump['features']), 1))
@@ -160,8 +160,9 @@ def main(opts):
         if opts.feature_type == "cls":
             bboxes = np.array([[0, 0, 1, 1, 1, 1]])
         else:
-            bboxes = _normalize_bb(info['bbox'], info['image_width'],
-                               info['image_height'], format='xyxy')
+            bboxes = _normalize_bb(
+                info['bbox'], info['image_width'], info['image_height'],
+                format='xyxy')
         load = load_clip_npy(bboxes, opts.feature_type)
     elif opts.feature_format == 'npy':
         load = load_npy(opts.conf_th, opts.max_bb, opts.min_bb, opts.num_bb,

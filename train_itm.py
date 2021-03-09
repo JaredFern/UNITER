@@ -10,27 +10,25 @@ from os.path import exists, join
 from time import time
 
 import torch
-from torch.nn.utils import clip_grad_norm_
-from torch.utils.data import DataLoader, ConcatDataset
 from apex import amp
 from horovod import torch as hvd
+from torch.nn.utils import clip_grad_norm_
+from torch.utils.data import ConcatDataset, DataLoader
 from tqdm import tqdm
 
-from data import (PrefetchLoader, TxtTokLmdb, ImageLmdbGroup,
-                  ItmRankDataset, itm_rank_collate,
-                  ItmValDataset, itm_val_collate,
-                  ItmEvalDataset, itm_eval_collate)
+from data import (ImageLmdbGroup, ItmEvalDataset, ItmRankDataset,
+                  ItmValDataset, PrefetchLoader, TxtTokLmdb, itm_eval_collate,
+                  itm_rank_collate, itm_val_collate)
 from model.itm import UniterForImageTextRetrieval
 from optim import get_lr_sched
 from optim.misc import build_optimizer
-
-from utils.logger import LOGGER, TB_LOGGER, RunningMeter, add_log_to_file
-from utils.distributed import (all_reduce_and_rescale_tensors, all_gather_list,
-                               broadcast_tensors)
-from utils.save import ModelSaver, save_training_meta
-from utils.misc import NoOp, parse_with_config, set_dropout, set_random_seed
 from utils.const import IMG_DIM
+from utils.distributed import (all_gather_list, all_reduce_and_rescale_tensors,
+                               broadcast_tensors)
 from utils.itm_eval import evaluate
+from utils.logger import LOGGER, TB_LOGGER, RunningMeter, add_log_to_file
+from utils.misc import NoOp, parse_with_config, set_dropout, set_random_seed
+from utils.save import ModelSaver, save_training_meta
 
 
 def build_dataloader(dataset, collate_fn, is_train, opts):
@@ -43,6 +41,7 @@ def build_dataloader(dataset, collate_fn, is_train, opts):
     return dataloader
 
 
+# flake8: noqa: C901
 def main(opts):
     hvd.init()
     n_gpu = hvd.size()
@@ -55,9 +54,9 @@ def main(opts):
                     device, n_gpu, hvd.rank(), opts.fp16))
 
     if opts.gradient_accumulation_steps < 1:
-        raise ValueError("Invalid gradient_accumulation_steps parameter: {}, "
-                         "should be >= 1".format(
-                            opts.gradient_accumulation_steps))
+        raise ValueError(
+            "Invalid gradient_accumulation_steps parameter: "
+            f"{opts.gradient_accumulation_steps} should be >= 1")
 
     set_random_seed(opts.seed)
 
@@ -128,7 +127,7 @@ def main(opts):
 
     model = UniterForImageTextRetrieval.from_pretrained(
         opts.model_config, state_dict=checkpoint,
-        img_dim=IMG_DIM, margin=opts.margin)
+        img_dim=opts.img_dim, margin=opts.margin)
     model.init_output()  # pretrain ITM head is different from ranking head
     model.to(device)
     # make sure every process has same model parameters in the beginning
@@ -163,7 +162,7 @@ def main(opts):
             n_examples += batch['input_ids'].size(0)
             loss = model(batch, compute_loss=True)
             loss = loss.mean()
-            delay_unscale = (step+1) % opts.gradient_accumulation_steps != 0
+            delay_unscale = (step + 1) % opts.gradient_accumulation_steps != 0
             with amp.scale_loss(loss, optimizer, delay_unscale=delay_unscale
                                 ) as scaled_loss:
                 scaled_loss.backward()
@@ -203,7 +202,7 @@ def main(opts):
                     # monitor training throughput
                     LOGGER.info(f'------------Step {global_step}-------------')
                     tot_ex = sum(all_gather_list(n_examples))
-                    ex_per_sec = int(tot_ex / (time()-start))
+                    ex_per_sec = int(tot_ex / (time() - start))
                     LOGGER.info(f'{tot_ex} examples trained at '
                                 f'{ex_per_sec} ex/s')
                     TB_LOGGER.add_scalar('perf/ex_per_s',
@@ -214,7 +213,7 @@ def main(opts):
                     if opts.full_val:
                         LOGGER.info(
                             f"========================== Step {global_step} "
-                            f"==========================")
+                            "==========================")
                         val_log = evaluate(model, eval_loader_val)
                         TB_LOGGER.log_scaler_dict(
                             {f"valid/{k}": v for k, v in val_log.items()})
@@ -301,8 +300,8 @@ def validate(model, val_loader):
     recall_at_1 = sum(all_gather_list(recall_at_1)) / n_ex
     recall_at_5 = sum(all_gather_list(recall_at_5)) / n_ex
     recall_at_10 = sum(all_gather_list(recall_at_10)) / n_ex
-    tot_time = time()-st
-    val_log = {'valid/ex_per_s': n_ex/tot_time,
+    tot_time = time() - st
+    val_log = {'valid/ex_per_s': n_ex / tot_time,
                'valid/recall_1': recall_at_1,
                'valid/recall_5': recall_at_5,
                'valid/recall_10': recall_at_10}

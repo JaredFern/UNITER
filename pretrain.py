@@ -5,40 +5,35 @@ Licensed under the MIT license.
 UNITER pre-training
 """
 import argparse
-from collections import defaultdict
 import json
 import math
 import os
+from collections import defaultdict
 from os.path import exists, join
 from time import time
 
 import torch
-from torch.utils.data import DataLoader
-from torch.nn import functional as F
-from torch.nn.utils import clip_grad_norm_
-
 from apex import amp
 from horovod import torch as hvd
-
+from torch.nn import functional as F
+from torch.nn.utils import clip_grad_norm_
+from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from data import (TokenBucketSampler, TokenBucketSamplerForItm,
-                  MetaLoader, PrefetchLoader,
-                  TxtTokLmdb, ImageLmdbGroup, ConcatDatasetWithLens,
-                  MlmDataset, MrfrDataset, MrcDataset,
-                  mlm_collate, mrfr_collate, mrc_collate,
-                  ItmDataset, itm_collate, itm_ot_collate)
-
+from data import (ConcatDatasetWithLens, ImageLmdbGroup, ItmDataset,
+                  MetaLoader, MlmDataset, MrcDataset, MrfrDataset,
+                  PrefetchLoader, TokenBucketSampler, TokenBucketSamplerForItm,
+                  TxtTokLmdb, itm_collate, itm_ot_collate, mlm_collate,
+                  mrc_collate, mrfr_collate)
 from model.pretrain import UniterForPretraining
 from optim import get_lr_sched
 from optim.misc import build_optimizer
-
-from utils.logger import LOGGER, TB_LOGGER, RunningMeter, add_log_to_file
-from utils.distributed import (all_reduce_and_rescale_tensors, all_gather_list,
+from utils.const import BUCKET_SIZE, IMG_DIM, IMG_LABEL_DIM
+from utils.distributed import (all_gather_list, all_reduce_and_rescale_tensors,
                                broadcast_tensors)
-from utils.save import ModelSaver, save_training_meta
+from utils.logger import LOGGER, TB_LOGGER, RunningMeter, add_log_to_file
 from utils.misc import NoOp, parse_with_config, set_dropout, set_random_seed
-from utils.const import IMG_DIM, IMG_LABEL_DIM, BUCKET_SIZE
+from utils.save import ModelSaver, save_training_meta
 
 
 def build_dataloader(dataset, collate_fn, is_train, opts):
@@ -165,6 +160,7 @@ def create_dataloaders(datasets, is_train, opts, all_img_dbs=None):
     return dataloaders, all_img_dbs
 
 
+# flake8: noqa: C901
 def main(opts):
     hvd.init()
     n_gpu = hvd.size()
@@ -177,9 +173,9 @@ def main(opts):
                     device, n_gpu, hvd.rank(), opts.fp16))
 
     if opts.gradient_accumulation_steps < 1:
-        raise ValueError("Invalid gradient_accumulation_steps parameter: {}, "
-                         "should be >= 1".format(
-                            opts.gradient_accumulation_steps))
+        raise ValueError(
+            "Invalid gradient_accumulation_steps parameter: "
+            f"{opts.gradient_accumulation_steps}, should be >= 1")
 
     set_random_seed(opts.seed)
 
@@ -295,7 +291,7 @@ def main(opts):
             loss = loss.mean()  # loss is not normalized in model
 
         # backward pass
-        delay_unscale = (step+1) % opts.gradient_accumulation_steps != 0
+        delay_unscale = (step + 1) % opts.gradient_accumulation_steps != 0
         with amp.scale_loss(loss, optimizer, delay_unscale=delay_unscale,
                             loss_id=task2scaler[name]) as scaled_loss:
             scaled_loss.backward()
@@ -340,11 +336,11 @@ def main(opts):
                 for t in train_dataloaders.keys():
                     assert all(tt == t for tt in all_gather_list(t))
                     tot_ex = sum(all_gather_list(n_examples[t]))
-                    ex_per_sec = int(tot_ex / (time()-start))
+                    ex_per_sec = int(tot_ex / (time() - start))
                     tot_in = sum(all_gather_list(n_in_units[t]))
-                    in_per_sec = int(tot_in / (time()-start))
+                    in_per_sec = int(tot_in / (time() - start))
                     tot_l = sum(all_gather_list(n_loss_units[t]))
-                    l_per_sec = int(tot_l / (time()-start))
+                    l_per_sec = int(tot_l / (time() - start))
                     LOGGER.info(f'{t}: {tot_ex} examples trained at '
                                 f'{ex_per_sec} ex/s')
                     TB_LOGGER.add_scalar(f'perf/{t}_ex_per_s', ex_per_sec,
@@ -405,12 +401,12 @@ def validate_mlm(model, val_loader):
     val_loss = sum(all_gather_list(val_loss))
     n_correct = sum(all_gather_list(n_correct))
     n_word = sum(all_gather_list(n_word))
-    tot_time = time()-st
+    tot_time = time() - st
     val_loss /= n_word
     acc = n_correct / n_word
     val_log = {'loss': val_loss,
                'acc': acc,
-               'tok_per_s': n_word/tot_time}
+               'tok_per_s': n_word / tot_time}
     LOGGER.info(f"validation finished in {int(tot_time)} seconds, "
                 f"acc: {acc*100:.2f}")
     return val_log
@@ -435,10 +431,10 @@ def validate_mrfr(model, val_loader, img_dim):
         n_feat += batch['img_mask_tgt'].sum().item()
     val_loss = sum(all_gather_list(val_loss))
     n_feat = sum(all_gather_list(n_feat))
-    tot_time = time()-st
+    tot_time = time() - st
     val_loss /= n_feat
     val_log = {'loss': val_loss,
-               'feat_per_s': n_feat/tot_time}
+               'feat_per_s': n_feat / tot_time}
     LOGGER.info(f"validation finished in {int(tot_time)} seconds, "
                 f"loss: {val_loss:.2f}")
     return val_log
@@ -475,12 +471,12 @@ def validate_mrc(model, val_loader, task):
     val_loss = sum(all_gather_list(val_loss))
     tot_score = sum(all_gather_list(tot_score))
     n_feat = sum(all_gather_list(n_feat))
-    tot_time = time()-st
+    tot_time = time() - st
     val_loss /= n_feat
     val_acc = tot_score / n_feat
     val_log = {'loss': val_loss,
                'acc': val_acc,
-               'feat_per_s': n_feat/tot_time}
+               'feat_per_s': n_feat / tot_time}
     LOGGER.info(f"validation finished in {int(tot_time)} seconds, "
                 f"score: {val_acc*100:.2f}")
     return val_log
@@ -524,12 +520,12 @@ def validate_itm(model, val_loader):
     val_loss = sum(all_gather_list(val_loss))
     tot_score = sum(all_gather_list(tot_score))
     n_ex = sum(all_gather_list(n_ex))
-    tot_time = time()-st
+    tot_time = time() - st
     val_loss /= n_ex
     val_acc = tot_score / n_ex
     val_log = {'valid/loss': val_loss,
                'valid/acc': val_acc,
-               'valid/ex_per_s': n_ex/tot_time}
+               'valid/ex_per_s': n_ex / tot_time}
 
     if ot_loss is not None:
         tot_ot_loss = sum(all_gather_list(tot_ot_loss))
