@@ -15,5 +15,5 @@ BINDINGS="${BINDINGS},$DATA_DIR/UNITER/datasets/txt_db/:/txt"
 BINDINGS="${BINDINGS},$DATA_DIR/UNITER/datasets/img_db/:/img"
 BINDINGS="${BINDINGS},$CORPORA_DIR/:/corpora,$IMG_PATH/opt/:/opt"
 
-srun --mem 64G --time 4-00:00:00 --ntasks-per-node=4 --gres=gpu:4 --pty zsh -c \
+srun --mem 64G --time 4-00:00:00 --gres=gpu:4 --pty zsh -c \
     "singularity shell --nv -B $BINDINGS -H $UNITER_DIR $IMG_PATH";
