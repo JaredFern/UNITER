@@ -12,16 +12,15 @@ import logging
 from io import open
 
 import torch
-from torch import nn
 from apex.normalization.fused_layer_norm import FusedLayerNorm
+from torch import nn
 
 from .layer import BertLayer, BertPooler
-
 
 logger = logging.getLogger(__name__)
 
 
-class UniterConfig(object):
+class ModelConfig(object):
     """Configuration class to store the configuration of a `UniterModel`.
     """
     def __init__(self,
@@ -89,7 +88,7 @@ class UniterConfig(object):
     def from_dict(cls, json_object):
         """Constructs a `UniterConfig` from a
            Python dictionary of parameters."""
-        config = UniterConfig(vocab_size_or_config_json_file=-1)
+        config = ModelConfig(vocab_size_or_config_json_file=-1)
         for key, value in json_object.items():
             config.__dict__[key] = value
         return config
@@ -114,13 +113,13 @@ class UniterConfig(object):
         return json.dumps(self.to_dict(), indent=2, sort_keys=True) + "\n"
 
 
-class UniterPreTrainedModel(nn.Module):
+class PretrainedModel(nn.Module):
     """ An abstract class to handle weights initialization and
         a simple interface for dowloading and loading pretrained models.
     """
     def __init__(self, config, *inputs, **kwargs):
         super().__init__()
-        if not isinstance(config, UniterConfig):
+        if not isinstance(config, ModelConfig):
             raise ValueError(
                 "Parameter config in `{}(config)` should be an instance of "
                 "class `UniterConfig`. To create a model from a Google "
@@ -156,7 +155,7 @@ class UniterPreTrainedModel(nn.Module):
             *inputs, **kwargs: additional input for the specific Uniter class
         """
         # Load config
-        config = UniterConfig.from_json_file(config_file)
+        config = ModelConfig.from_json_file(config_file)
         logger.info("Model config {}".format(config))
         # Instantiate model.
         model = cls(config, *inputs, **kwargs)
@@ -292,7 +291,7 @@ class UniterEncoder(nn.Module):
         return all_encoder_layers
 
 
-class UniterModel(UniterPreTrainedModel):
+class UniterModel(PretrainedModel):
     """ Modification for Joint Vision-Language Encoding
     """
     def __init__(self, config, img_dim):

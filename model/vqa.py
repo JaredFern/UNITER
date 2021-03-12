@@ -6,25 +6,25 @@ Uniter for VQA model
 """
 from collections import defaultdict
 
+from apex.normalization.fused_layer_norm import FusedLayerNorm as LayerNorm
 from torch import nn
 from torch.nn import functional as F
-from apex.normalization.fused_layer_norm import FusedLayerNorm as LayerNorm
 
 from .layer import GELU
-from .model import UniterPreTrainedModel, UniterModel
+from .model import PretrainedModel, UniterModel
 
 
-class UniterForVisualQuestionAnswering(UniterPreTrainedModel):
+class UniterForVisualQuestionAnswering(PretrainedModel):
     """ Finetune UNITER for VQA
     """
     def __init__(self, config, img_dim, num_answer):
         super().__init__(config)
         self.uniter = UniterModel(config, img_dim)
         self.vqa_output = nn.Sequential(
-            nn.Linear(config.hidden_size, config.hidden_size*2),
+            nn.Linear(config.hidden_size, config.hidden_size * 2),
             GELU(),
-            LayerNorm(config.hidden_size*2, eps=1e-12),
-            nn.Linear(config.hidden_size*2, num_answer)
+            LayerNorm(config.hidden_size * 2, eps=1e-12),
+            nn.Linear(config.hidden_size * 2, num_answer)
         )
         self.apply(self.init_weights)
 

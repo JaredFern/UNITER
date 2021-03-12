@@ -10,17 +10,17 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from .model import UniterPreTrainedModel, UniterModel
 from .attention import MultiheadAttention
+from .model import PretrainedModel, UniterModel
 
 
-class UniterForNlvr2Paired(UniterPreTrainedModel):
+class UniterForNlvr2Paired(PretrainedModel):
     """ Finetune UNITER for NLVR2 (paired format)
     """
     def __init__(self, config, img_dim):
         super().__init__(config)
         self.uniter = UniterModel(config, img_dim)
-        self.nlvr2_output = nn.Linear(config.hidden_size*2, 2)
+        self.nlvr2_output = nn.Linear(config.hidden_size * 2, 2)
         self.apply(self.init_weights)
 
     def init_type_embedding(self):
@@ -62,7 +62,7 @@ class UniterForNlvr2Paired(UniterPreTrainedModel):
             return answer_scores
 
 
-class UniterForNlvr2Triplet(UniterPreTrainedModel):
+class UniterForNlvr2Triplet(PretrainedModel):
     """ Finetune UNITER for NLVR2 (triplet format)
     """
     def __init__(self, config, img_dim):
@@ -125,7 +125,7 @@ class AttentionPool(nn.Module):
         return output
 
 
-class UniterForNlvr2PairedAttn(UniterPreTrainedModel):
+class UniterForNlvr2PairedAttn(PretrainedModel):
     """ Finetune UNITER for NLVR2
         (paired format with additional attention layer)
     """
@@ -139,12 +139,12 @@ class UniterForNlvr2PairedAttn(UniterPreTrainedModel):
                                         config.num_attention_heads,
                                         config.attention_probs_dropout_prob)
         self.fc = nn.Sequential(
-            nn.Linear(2*config.hidden_size, config.hidden_size),
+            nn.Linear(2 * config.hidden_size, config.hidden_size),
             nn.ReLU(),
             nn.Dropout(config.hidden_dropout_prob))
         self.attn_pool = AttentionPool(config.hidden_size,
                                        config.attention_probs_dropout_prob)
-        self.nlvr2_output = nn.Linear(2*config.hidden_size, 2)
+        self.nlvr2_output = nn.Linear(2 * config.hidden_size, 2)
         self.apply(self.init_weights)
 
     def init_type_embedding(self):
@@ -174,11 +174,10 @@ class UniterForNlvr2PairedAttn(UniterPreTrainedModel):
         # separate left image and right image
         bs, tl, d = sequence_output.size()
         left_out, right_out = sequence_output.contiguous().view(
-            bs//2, tl*2, d).chunk(2, dim=1)
+            bs // 2, tl * 2, d).chunk(2, dim=1)
         # bidirectional attention
         mask = attn_masks == 0
-        left_mask, right_mask = mask.contiguous().view(bs//2, tl*2
-                                                       ).chunk(2, dim=1)
+        left_mask, right_mask = mask.contiguous().view(bs // 2, tl * 2).chunk(2, dim=1)
         left_out = left_out.transpose(0, 1)
         right_out = right_out.transpose(0, 1)
         l2r_attn, _ = self.attn1(left_out, right_out, right_out,

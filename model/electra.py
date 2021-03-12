@@ -1,10 +1,10 @@
 from collections import defaultdict
 
 import torch
+from pretrain_vcr import UniterForPretrainingForVCR
 from torch import nn
 
-from model import UniterPreTrainedModel
-from pretrain_vcr import UniterForPretrainingForVCR
+from model import PretrainedModel
 
 
 class ElectraLoss(nn.Module):
@@ -23,7 +23,7 @@ class ElectraLoss(nn.Module):
         return gen_loss * self.loss_weights[0] + disc_loss * self.loss_weights[1]
 
 
-class UniterForElectraPretraining(UniterPreTrainedModel):
+class UniterForElectraPretraining(PretrainedModel):
     def __init__(self, config, img_dim, img_label_dim):
         super().__init__(config)
         self.generator = UniterForPretrainingForVCR(config, img_dim, img_label_dim)
@@ -41,15 +41,15 @@ class UniterForElectraPretraining(UniterPreTrainedModel):
         gather_index = batch['gather_index']
         if task == 'mlm':
             with torch.no_grad():
-                txt_labels = batch['txt_labels'] # (B, L)
-                is_mlm_applied = (txt_labels != -1)# -1 if masking is not applied
+                txt_labels = batch['txt_labels']  # (B, L)
+                is_mlm_applied = (txt_labels != -1)  # -1 if masking is not applied
                 gen_logits = self.generator.forward_mlm(
                     input_ids, position_ids, img_feat, img_pos_feat,
                     attention_mask, gather_index, txt_labels, False)
 
-                gen_tokens = self.generator.sample(gen_logits) # (B, num_mlm_pos)
+                gen_tokens = self.generator.sample(gen_logits)  # (B, num_mlm_pos)
                 generated = input_ids.clone()
-                generated[txt_labels] = gen_tokens # (B, L)
+                generated[txt_labels] = gen_tokens  # (B, L)
 
                 is_replaced = is_mlm_applied.clone()
                 is_replaced[is_mlm_applied] = (gen_tokens != txt_labels[is_mlm_applied])
@@ -97,4 +97,3 @@ class UniterForElectraPretraining(UniterPreTrainedModel):
                 compute_loss)
         else:
             raise ValueError('invalid task')
-

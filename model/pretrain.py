@@ -7,12 +7,12 @@ UNITER for pretraining
 from collections import defaultdict
 
 import torch
+from apex.normalization.fused_layer_norm import FusedLayerNorm as LayerNorm
 from torch import nn
 from torch.nn import functional as F
-from apex.normalization.fused_layer_norm import FusedLayerNorm as LayerNorm
 
 from .layer import GELU, BertOnlyMLMHead
-from .model import UniterModel, UniterPreTrainedModel
+from .model import PretrainedModel, UniterModel
 from .ot import optimal_transport_dist
 
 
@@ -47,7 +47,7 @@ class RegionClassification(nn.Module):
         return output
 
 
-class UniterForPretraining(UniterPreTrainedModel):
+class UniterForPretraining(PretrainedModel):
     """ UNITER pretraining """
     def __init__(self, config, img_dim, img_label_dim):
         super().__init__(config)
@@ -170,7 +170,7 @@ class UniterForPretraining(UniterPreTrainedModel):
             b = sequence_output.size(0)
             tl = input_ids.size(1)
             il = img_feat.size(1)
-            max_l = max(ot_inputs['scatter_max'] + 1, tl+il)
+            max_l = max(ot_inputs['scatter_max'] + 1, tl + il)
 
             ot_scatter = ot_scatter.unsqueeze(-1).expand_as(sequence_output)
             ctx_emb = torch.zeros(b, max_l, self.config.hidden_size,
@@ -179,7 +179,7 @@ class UniterForPretraining(UniterPreTrainedModel):
                                   ).scatter_(dim=1, index=ot_scatter,
                                              src=sequence_output)
             txt_emb = ctx_emb[:, :tl, :]
-            img_emb = ctx_emb[:, tl:tl+il, :]
+            img_emb = ctx_emb[:, tl:tl + il, :]
 
             txt_pad = ot_inputs['txt_pad']
             img_pad = ot_inputs['img_pad']

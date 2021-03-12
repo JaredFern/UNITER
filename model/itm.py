@@ -8,10 +8,11 @@ from collections import defaultdict
 
 import torch
 from torch import nn
-from .model import UniterPreTrainedModel, UniterModel
+
+from .model import PretrainedModel, UniterModel
 
 
-class UniterForImageTextRetrieval(UniterPreTrainedModel):
+class UniterForImageTextRetrieval(PretrainedModel):
     """ Finetune UNITER for image text retrieval
     """
     def __init__(self, config, img_dim, margin=0.2):
@@ -109,7 +110,7 @@ class UniterForImageTextRetrievalHardNeg(UniterForImageTextRetrieval):
         attention_mask = attention_mask.index_select(0, indices)
         gather_index = gather_index.index_select(0, indices)
         if position_ids.size(0) != 1:
-            position_ids = position_ids[:self.hard_size+1]
+            position_ids = position_ids[:self.hard_size + 1]
 
         if sample_from == 't':
             # cut to minimum padding
@@ -120,12 +121,12 @@ class UniterForImageTextRetrievalHardNeg(UniterForImageTextRetrieval):
             img_feat = img_feat.index_select(0, indices)[:, :max_i, :]
             img_pos_feat = img_pos_feat.index_select(0, indices)[:, :max_i, :]
             # expect same input_ids for all pairs
-            input_ids = input_ids[:self.hard_size+1]
+            input_ids = input_ids[:self.hard_size + 1]
         elif sample_from == 'i':
             input_ids = input_ids.index_select(0, indices)
             # expect same image features for all pairs
-            img_feat = img_feat[:self.hard_size+1]
-            img_pos_feat = img_pos_feat[:self.hard_size+1]
+            img_feat = img_feat[:self.hard_size + 1]
+            img_pos_feat = img_pos_feat[:self.hard_size + 1]
         else:
             raise ValueError()
 

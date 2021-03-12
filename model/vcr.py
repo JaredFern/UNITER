@@ -6,26 +6,25 @@ Uniter for VCR model
 """
 from collections import defaultdict
 
+from apex.normalization.fused_layer_norm import FusedLayerNorm as LayerNorm
 from torch import nn
 from torch.nn import functional as F
-from apex.normalization.fused_layer_norm import FusedLayerNorm as LayerNorm
 
 # from .layer import GELU
-from .model import (
-    UniterPreTrainedModel, UniterModel)
+from .model import PretrainedModel, UniterModel
 
 
-class UniterForVisualCommonsenseReasoning(UniterPreTrainedModel):
+class UniterForVisualCommonsenseReasoning(PretrainedModel):
     """ Finetune UNITER for VCR
     """
     def __init__(self, config, img_dim):
         super().__init__(config, img_dim)
         self.uniter = UniterModel(config, img_dim)
         self.vcr_output = nn.Sequential(
-            nn.Linear(config.hidden_size, config.hidden_size*2),
+            nn.Linear(config.hidden_size, config.hidden_size * 2),
             nn.ReLU(),
-            LayerNorm(config.hidden_size*2, eps=1e-12),
-            nn.Linear(config.hidden_size*2, 2)
+            LayerNorm(config.hidden_size * 2, eps=1e-12),
+            nn.Linear(config.hidden_size * 2, 2)
         )
         self.apply(self.init_weights)
 
@@ -68,9 +67,7 @@ class UniterForVisualCommonsenseReasoning(UniterPreTrainedModel):
 
         if compute_loss:
             targets = batch['targets']
-            vcr_loss = F.cross_entropy(
-                    rank_scores, targets.squeeze(-1),
-                    reduction='mean')
+            vcr_loss = F.cross_entropy(rank_scores, targets.squeeze(-1), reduction='mean')
             return vcr_loss
         else:
             rank_scores = rank_scores[:, 1:]

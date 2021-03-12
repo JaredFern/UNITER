@@ -6,20 +6,19 @@ from os.path import exists
 from time import time
 
 import torch
-from torch.utils.data import DataLoader
 from apex import amp
 from horovod import torch as hvd
+from torch.utils.data import DataLoader
 
-from data import (DetectFeatLmdb, TxtTokLmdb,
-                  PrefetchLoader, TokenBucketSampler,
-                  Nlvr2PairedEvalDataset, Nlvr2TripletEvalDataset,
-                  nlvr2_paired_eval_collate, nlvr2_triplet_eval_collate)
-from model.model import UniterConfig
-from model.nlvr2 import (UniterForNlvr2Paired, UniterForNlvr2Triplet,
-                         UniterForNlvr2PairedAttn)
-
+from data import (DetectFeatLmdb, Nlvr2PairedEvalDataset,
+                  Nlvr2TripletEvalDataset, PrefetchLoader, TokenBucketSampler,
+                  TxtTokLmdb, nlvr2_paired_eval_collate,
+                  nlvr2_triplet_eval_collate)
+from model.model import ModelConfig
+from model.nlvr2 import (UniterForNlvr2Paired, UniterForNlvr2PairedAttn,
+                         UniterForNlvr2Triplet)
+from utils.const import BUCKET_SIZE, IMG_DIM
 from utils.misc import Struct
-from utils.const import IMG_DIM, BUCKET_SIZE
 
 
 def main(opts):
@@ -62,7 +61,7 @@ def main(opts):
     # Prepare model
     ckpt_file = f'{opts.train_dir}/ckpt/model_step_{opts.ckpt}.pt'
     checkpoint = torch.load(ckpt_file)
-    model_config = UniterConfig.from_json_file(
+    model_config = ModelConfig.from_json_file(
         f'{opts.train_dir}/log/model.json')
     model = ModelCls(model_config, img_dim=IMG_DIM)
     model.init_type_embedding()
@@ -77,7 +76,7 @@ def main(opts):
     with open(f'{opts.output_dir}/results.csv', 'w') as f:
         for id_, ans in results:
             f.write(f'{id_},{ans}\n')
-    print(f'all results written')
+    print('all results written')
 
 
 @torch.no_grad()
@@ -99,7 +98,7 @@ def evaluate(model, eval_loader, device):
         n_results = len(results)
         print(f'{n_results}/{len(eval_loader.dataset)} answers predicted')
         n_ex += len(qids)
-    tot_time = time()-st
+    tot_time = time() - st
     model.train()
     print(f"evaluation finished in {int(tot_time)} seconds "
           f"at {int(n_ex/tot_time)} examples per second")
