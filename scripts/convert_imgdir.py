@@ -17,6 +17,9 @@ import msgpack
 import msgpack_numpy
 import numpy as np
 from cytoolz import curry
+from PIL import Image
+from torchvision.transforms import (CenterCrop, Compose, Normalize, Resize,
+                                    ToTensor)
 from tqdm import tqdm
 
 msgpack_numpy.patch()
@@ -96,6 +99,27 @@ def load_clip_npy(bboxes, feature_type, fname):
 
 
 @curry
+def load_image_tensor(bboxes, input_resolution, fname):
+    preprocess = Compose([
+        Resize(input_resolution, interpolation=Image.BICUBIC),
+        CenterCrop(input_resolution),
+        ToTensor()
+    ])
+
+    dump = {}
+    try:
+        dump['image_tensors'] = preprocess(Image.open(fname).convert("RGB"))
+        dump['norm_bb'] = bboxes
+        dump['conf'] = np.ones((len(dump['features']), 1))
+        nbb = len(bboxes)
+    except Exception as e:
+        print(f'corrupted file {fname}', e)
+        dump = {}
+    fname = basename(fname)
+    return fname, dump, nbb
+
+
+@curry
 def load_npz(conf_th, max_bb, min_bb, num_bb, fname, keep_all=False):
     try:
         img_dump = np.load(fname, allow_pickle=True)
@@ -161,9 +185,15 @@ def main(opts):
             bboxes = np.array([[0, 0, 1, 1, 1, 1]])
         else:
             bboxes = _normalize_bb(
-                info['bbox'], info['image_width'], info['image_height'],
-                format='xyxy')
+                info['bbox'], info['image_width'], info['image_height'], format='xyxy')
         load = load_clip_npy(bboxes, opts.feature_type)
+    elif opts.feature_format == 'raw_image':
+        info = np.load(opts.info_file, allow_pickle=True).item()
+        bboxes = np.vstack((
+            np.array([0, 0, 1, 1, 1, 1]),
+            _normalize_bb(info['bbox'], info['image_width'], info['image_height'], format='xyxy')
+        ))
+        load = load_image_tensor(bboxes, opts.input_resolution)
     elif opts.feature_format == 'npy':
         load = load_npy(opts.conf_th, opts.max_bb, opts.min_bb, opts.num_bb,
                         keep_all=opts.keep_all)
@@ -209,7 +239,7 @@ if __name__ == '__main__':
                         help='compress the tensors')
     parser.add_argument('--keep_all', action='store_true',
                         help='keep all features, overrides all following args')
-    parser.add_argument('--feature_format', choices=['npy', 'npz', 'npy_patches'],
+    parser.add_argument('--feature_format', choices=['npy', 'npz', 'npy_patches', 'raw_image'],
                         help='format of the feature file/associated metadata')
     parser.add_argument('--feature_type', choices=['patches', 'cls'])
     parser.add_argument('--conf_th', type=float, default=0.2,
@@ -221,6 +251,7 @@ if __name__ == '__main__':
                         help='min number of bounding boxes')
     parser.add_argument('--num_bb', type=int, default=100,
                         help='number of bounding boxes (fixed)')
+    parser.add_argument('--input_resolution', type=int, default=224)
     parser.add_argument('--info_file', type=str, default=None,
                         help='metadata file for all images. used for patches')
     args = parser.parse_args()
