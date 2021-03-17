@@ -5,8 +5,8 @@ from toolz.sandbox import unzip
 from torch.nn.utils.rnn import pad_sequence
 from .data import pad_tensors, get_gather_index
 from .mrm import (
-    _get_img_tgt_mask, _get_img_mask, _mask_img_feat,
-    _get_feat_target, _get_targets)
+    get_img_tgt_mask, get_img_mask, mask_img_feat,
+    get_feat_target, _get_targets)
 
 
 class VcrPretrainDataset(VcrDetectFeatTxtTokDataset):
@@ -162,8 +162,8 @@ class MrfrDatasetForVCR(VcrPretrainDataset):
         # image input features
         img_feat, img_pos_feat, num_bb = self._get_img_feat(
             example['img_fname'][0], example['img_fname'][1])
-        img_mask = _get_img_mask(self.mask_prob, num_bb)
-        img_mask_tgt = _get_img_tgt_mask(img_mask, len(input_ids))
+        img_mask = get_img_mask(self.mask_prob, num_bb)
+        img_mask_tgt = get_img_tgt_mask(img_mask, len(input_ids))
 
         attn_masks = torch.ones(len(input_ids) + num_bb, dtype=torch.long)
 
@@ -181,10 +181,10 @@ def mrfr_collate_for_vcr(inputs):
 
     # mask features
     img_masks = pad_sequence(img_masks, batch_first=True, padding_value=0)
-    feat_targets = _get_feat_target(batch['img_feat'], img_masks)
+    feat_targets = get_feat_target(batch['img_feat'], img_masks)
     img_mask_tgt = pad_sequence(
         img_mask_tgts, batch_first=True, padding_value=0)
-    batch['img_feat'] = _mask_img_feat(batch['img_feat'], img_masks)
+    batch['img_feat'] = mask_img_feat(batch['img_feat'], img_masks)
     batch['img_masks'] = img_masks
     batch['feat_targets'] = feat_targets
     batch['img_mask_tgt'] = img_mask_tgt
@@ -241,8 +241,8 @@ class MrcDatasetForVCR(VcrPretrainDataset):
         # image input features
         img_feat, img_pos_feat, img_soft_labels, num_bb = self._get_img_feat(
             example['img_fname'][0], example['img_fname'][1])
-        img_mask = _get_img_mask(self.mask_prob, num_bb)
-        img_mask_tgt = _get_img_tgt_mask(img_mask, len(input_ids))
+        img_mask = get_img_mask(self.mask_prob, num_bb)
+        img_mask_tgt = get_img_tgt_mask(img_mask, len(input_ids))
 
         attn_masks = torch.ones(len(input_ids) + num_bb, dtype=torch.long)
 
@@ -265,7 +265,7 @@ def mrc_collate_for_vcr(inputs):
     label_targets = _get_targets(img_masks, img_soft_label)
     img_mask_tgt = pad_sequence(
         img_mask_tgts, batch_first=True, padding_value=0)
-    batch['img_feat'] = _mask_img_feat(batch['img_feat'], img_masks)
+    batch['img_feat'] = mask_img_feat(batch['img_feat'], img_masks)
     batch['img_masks'] = img_masks
     batch['label_targets'] = label_targets
     batch['img_mask_tgt'] = img_mask_tgt

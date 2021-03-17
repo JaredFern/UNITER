@@ -12,7 +12,7 @@ from toolz.sandbox import unzip
 from .data import DetectFeatTxtTokDataset, pad_tensors, get_gather_index
 
 
-def _get_img_mask(mask_prob, num_bb):
+def get_img_mask(mask_prob, num_bb):
     ''' Creates binary  mask for img features'''
     img_mask = [random.random() < mask_prob for _ in range(num_bb)]
     if not any(img_mask):
@@ -22,14 +22,14 @@ def _get_img_mask(mask_prob, num_bb):
     return img_mask
 
 
-def _get_img_tgt_mask(img_mask, txt_len):
+def get_img_tgt_mask(img_mask, txt_len):
     ''' Pad image feat mask to cover txt embeddings '''
     z = torch.zeros(txt_len, dtype=torch.uint8)
     img_mask_tgt = torch.cat([z, img_mask], dim=0)
     return img_mask_tgt
 
 
-def _get_feat_target(img_feat, img_masks):
+def get_feat_target(img_feat, img_masks):
     img_masks_ext = img_masks.unsqueeze(-1).expand_as(img_feat)  # (n, m, d)
     feat_dim = img_feat.size(-1)
     feat_targets = img_feat[img_masks_ext].contiguous().view(
@@ -37,7 +37,7 @@ def _get_feat_target(img_feat, img_masks):
     return feat_targets
 
 
-def _mask_img_feat(img_feat, img_masks):
+def mask_img_feat(img_feat, img_masks):
     img_masks_ext = img_masks.unsqueeze(-1).expand_as(img_feat)
     img_feat_masked = img_feat.data.masked_fill(img_masks_ext, 0)
     return img_feat_masked
@@ -63,10 +63,9 @@ class MrfrDataset(DetectFeatTxtTokDataset):
         input_ids = self.txt_db.combine_inputs(input_ids)
 
         # image input features
-        img_feat, img_pos_feat, num_bb = self._get_img_feat(
-            example['img_fname'])
-        img_mask = _get_img_mask(self.mask_prob, num_bb)
-        img_mask_tgt = _get_img_tgt_mask(img_mask, len(input_ids))
+        img_feat, img_pos_feat, num_bb = self._get_img_feat(example['img_fname'])
+        img_mask = get_img_mask(self.mask_prob, num_bb)
+        img_mask_tgt = get_img_tgt_mask(img_mask, len(input_ids))
 
         attn_masks = torch.ones(len(input_ids) + num_bb, dtype=torch.long)
 
@@ -87,7 +86,7 @@ def mrfr_collate(inputs):
     - img_masks    : (n, max_num_bb) between {0, 1}
     """
     (input_ids, img_feats, img_pos_feats, attn_masks, img_masks, img_mask_tgts,
-     ) = map(list, unzip(inputs))
+    ) = map(list, unzip(inputs))
 
     txt_lens = [i.size(0) for i in input_ids]
 
@@ -101,8 +100,8 @@ def mrfr_collate(inputs):
 
     # mask features
     img_masks = pad_sequence(img_masks, batch_first=True, padding_value=0)
-    feat_targets = _get_feat_target(img_feat, img_masks)
-    img_feat = _mask_img_feat(img_feat, img_masks)
+    feat_targets = get_feat_target(img_feat, img_masks)
+    img_feat = mask_img_feat(img_feat, img_masks)
     img_mask_tgt = pad_sequence(img_mask_tgts,
                                 batch_first=True, padding_value=0)
 
@@ -151,12 +150,12 @@ class MrcDataset(DetectFeatTxtTokDataset):
             example['img_fname'])
 
         # image input features
-        img_mask = _get_img_mask(self.mask_prob, num_bb)
+        img_mask = get_img_mask(self.mask_prob, num_bb)
 
         # text input
         input_ids = example['input_ids']
         input_ids = self.txt_db.combine_inputs(input_ids)
-        img_mask_tgt = _get_img_tgt_mask(img_mask, len(input_ids))
+        img_mask_tgt = get_img_tgt_mask(img_mask, len(input_ids))
 
         attn_masks = torch.ones(len(input_ids) + num_bb, dtype=torch.long)
 
@@ -181,7 +180,7 @@ def mrc_collate(inputs):
     img_masks = pad_sequence(img_masks, batch_first=True, padding_value=0)
     label_targets = _get_targets(img_masks, img_soft_label)
 
-    img_feat = _mask_img_feat(img_feat, img_masks)
+    img_feat = mask_img_feat(img_feat, img_masks)
     img_mask_tgt = pad_sequence(img_mask_tgts,
                                 batch_first=True, padding_value=0)
 

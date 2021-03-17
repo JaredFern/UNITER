@@ -270,12 +270,10 @@ def pad_tensors(tensors, lens=None, pad=0):
 
 def get_gather_index(txt_lens, num_bbs, batch_size, max_len, out_size):
     assert len(txt_lens) == len(num_bbs) == batch_size
-    gather_index = torch.arange(0, out_size, dtype=torch.long,
-                                ).unsqueeze(0).repeat(batch_size, 1)
+    gather_index = torch.arange(0, out_size, dtype=torch.long, ).unsqueeze(0).repeat(batch_size, 1)
 
     for i, (tl, nbb) in enumerate(zip(txt_lens, num_bbs)):
-        gather_index.data[i, tl:tl+nbb] = torch.arange(max_len, max_len+nbb,
-                                                       dtype=torch.long).data
+        gather_index.data[i, tl:tl+nbb] = torch.arange(max_len, max_len+nbb, dtype=torch.long).data
     return gather_index
 
 
