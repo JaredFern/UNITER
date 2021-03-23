@@ -4,22 +4,22 @@ Licensed under the MIT license.
 
 Dataset interfaces
 """
-from collections import defaultdict
-from contextlib import contextmanager
 import io
 import json
+from collections import defaultdict
+from contextlib import contextmanager
 from os.path import exists
 
-import numpy as np
-import torch
-from torch.utils.data import Dataset, ConcatDataset
 import horovod.torch as hvd
-from tqdm import tqdm
 import lmdb
-from lz4.frame import compress, decompress
-
 import msgpack
 import msgpack_numpy
+import numpy as np
+import torch
+from lz4.frame import compress, decompress
+from torch.utils.data import ConcatDataset, Dataset
+from tqdm import tqdm
+
 msgpack_numpy.patch()
 
 

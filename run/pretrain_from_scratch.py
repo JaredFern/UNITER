@@ -21,9 +21,9 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from data import (ConcatDatasetWithLens, ImageLmdbGroup, ItmDataset,
-                  MetaLoader, MlmDataset, MrfrDataset,
-                  PrefetchLoader, TokenBucketSampler, TokenBucketSamplerForItm,
-                  TxtTokLmdb, itm_collate, itm_ot_collate, mlm_collate, mrfr_collate)
+                  MetaLoader, MlmDataset, MrfrDataset, PrefetchLoader,
+                  TokenBucketSampler, TokenBucketSamplerForItm, TxtTokLmdb,
+                  itm_collate, itm_ot_collate, mlm_collate, mrfr_collate)
 from model.vl_from_scratch import VLFromScratch
 from optim import get_lr_sched
 from optim.misc import build_optimizer

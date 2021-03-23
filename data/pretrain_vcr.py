@@ -1,12 +1,12 @@
-from .vcr import VcrDetectFeatTxtTokDataset
-from .mlm import random_word
 import torch
 from toolz.sandbox import unzip
 from torch.nn.utils.rnn import pad_sequence
-from .data import pad_tensors, get_gather_index
-from .mrm import (
-    get_img_tgt_mask, get_img_mask, mask_img_feat,
-    get_feat_target, _get_targets)
+
+from .data import get_gather_index, pad_tensors
+from .mlm import random_word
+from .mrm import (_get_targets, get_feat_target, get_img_mask,
+                  get_img_tgt_mask, mask_img_feat)
+from .vcr import VcrDetectFeatTxtTokDataset
 
 
 class VcrPretrainDataset(VcrDetectFeatTxtTokDataset):

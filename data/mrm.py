@@ -7,9 +7,10 @@ MRM Datasets
 import random
 
 import torch
-from torch.nn.utils.rnn import pad_sequence
 from toolz.sandbox import unzip
-from .data import DetectFeatTxtTokDataset, pad_tensors, get_gather_index
+from torch.nn.utils.rnn import pad_sequence
+
+from .data import DetectFeatTxtTokDataset, get_gather_index, pad_tensors
 
 
 def get_img_mask(mask_prob, num_bb):

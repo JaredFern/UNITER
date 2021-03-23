@@ -3,15 +3,17 @@ UNITER for end2end transformer pretraining with ViT visual backbone
 """
 from collections import defaultdict
 
+from data.data import get_gather_index, pad_tensors
+
+from .model import PretrainedModel
+from .pretrain import UniterForPretraining
+from .visual_transformer import ViT
+
 # import torch
 # from torch import nn
 # from torch.nn import functional as F
 # from torch.nn.utils.rnn import pad_sequence
 
-from data.data import pad_tensors, get_gather_index
-from .model import PretrainedModel
-from .pretrain import UniterForPretraining
-from .visual_transformer import ViT
 
 
 def get_feat_target(img_feat, img_masks):
