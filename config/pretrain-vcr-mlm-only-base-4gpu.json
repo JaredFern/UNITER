@@ -1,7 +1,7 @@
 {
     "model_config": "/src/config/uniter-base.json",
     "checkpoint": "/pretrain/uniter-base.pt",
-    "output_dir": "/storage/pretrain/vcr_2nd_stage_base",
+    "output_dir": "/storage/pretrain/vcr_2nd_stage_mlm_only",
     "mrm_prob": 0.15,
     "max_txt_len": 220,
     "conf_th": 0.2,
@@ -37,13 +37,9 @@
                 "/img/vcr_gt_train/;/img/vcr_train/"
             ],
             "tasks": [
-                "mlm",
-                "mrfr",
-                "mrckl"
+                "mlm"
             ],
             "mix_ratio": [
-                2,
-                1,
                 1
             ]
         }
@@ -58,9 +54,7 @@
                 "/img/vcr_gt_val/;/img/vcr_val/"
             ],
             "tasks": [
-                "mlm",
-                "mrfr",
-                "mrckl"
+                "mlm"
             ]
         }
     ],
