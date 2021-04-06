@@ -8,7 +8,7 @@ OUTPUT="/home/jaredfer/data/models/storage"
 PRETRAIN_DIR="/home/jaredfer/data/models/pretrained"
 
 if [ -z $CUDA_VISIBLE_DEVICES ]; then
-    CUDA_VISIBLE_DEVICES='all'
+    CUDA_VISIBLE_DEVICES='2,3'
 fi
 
 

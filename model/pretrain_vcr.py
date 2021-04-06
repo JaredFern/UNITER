@@ -78,6 +78,7 @@ class UniterForPretrainingForVCR(UniterForPretraining):
     def forward_mlm(self, input_ids, position_ids, txt_type_ids, img_feat,
                     img_pos_feat, attention_mask, gather_index,
                     txt_labels, compute_loss=True):
+        # print(input_ids, position_ids, txt_type_ids)
         sequence_output = self.uniter(input_ids, position_ids,
                                       img_feat, img_pos_feat,
                                       attention_mask, gather_index,

@@ -3,6 +3,7 @@ from collections import defaultdict
 import math
 import torch
 from torch import nn
+from pytorch_pretrained_bert import BertTokenizer
 
 from .layer import BertOnlyMLMHead
 from .model import UniterModel, UniterPreTrainedModel
@@ -86,15 +87,17 @@ class UniterDiscriminatorForElectraPretraining(UniterForPretrainingForVCR):
 
 
 class UniterForElectraPretraining(nn.Module):
-    def __init__(self, config, ckpt, img_dim, img_label_dim):
+    def __init__(self, gen_config, config, gen_ckpt, disc_ckpt, img_dim, img_label_dim):
         super(UniterForElectraPretraining, self).__init__()
         self.generator = UniterForPretrainingForVCR.from_pretrained(
-            config, ckpt, img_dim, img_label_dim)
-        self.discriminator = UniterDiscriminatorForElectraPretraining.from_pretrained(config, ckpt, img_dim, img_label_dim)
+            gen_config, gen_ckpt, img_dim, img_label_dim)
+        self.discriminator = UniterDiscriminatorForElectraPretraining.from_pretrained(
+            config, disc_ckpt, img_dim, img_label_dim)
+        # self.tokenizer = BertTokenizer.from_pretrained('bert-base-cased')
         self.gumbel_dist = torch.distributions.gumbel.Gumbel(0., 1.)
         self.electra_loss = ElectraLoss()
 
-    def forward(self, batch, task, compute_loss=True):
+    def forward(self, batch, task, compute_loss=True, all_ids=False):
         batch = defaultdict(lambda: None, batch)
         input_ids = batch['input_ids']
         position_ids = batch['position_ids']
@@ -117,6 +120,12 @@ class UniterForElectraPretraining(nn.Module):
 
                 is_replaced = is_mlm_applied.clone()
                 is_replaced[is_mlm_applied] = (gen_tokens != txt_labels[is_mlm_applied])
+            # print(f"Original Input IDs {input_ids}")
+            # print(f"Original Input Tokens {self.tokenizer.convert_ids_to_tokens(input_ids)}")
+
+            # print(f"Generated Input IDs {generated_tokens}")
+            # print(f"Generated Input Tokens {self.tokenizer.convert_ids_to_tokens(generated_tokens)}")
+
             disc_logits = self.discriminator.forward_mlm(
                 generated, position_ids, txt_type_ids, img_feat, img_pos_feat,
                 attention_mask, gather_index, is_replaced, False)
@@ -124,6 +133,8 @@ class UniterForElectraPretraining(nn.Module):
                 return self.electra_loss.forward(
                     gen_logits, disc_logits, attention_mask, txt_labels,
                     is_mlm_applied, is_replaced)
+            elif all_ids:
+                return input_ids, generated_tokens, disc_logits
             else:
                 return disc_logits
         elif task == 'mrfr':

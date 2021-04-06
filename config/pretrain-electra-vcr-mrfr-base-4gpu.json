@@ -3,7 +3,7 @@
     "disc_checkpoint": "/pretrain/uniter-base.pt",
     "gen_model_config": "/src/config/uniter-vcr-base.json",
     "gen_checkpoint": "/pretrain/uniter-base-vcr_2nd_stage.pt",
-    "output_dir": "/storage/pretrain/vcr-electra-mlm-indomain-test",
+    "output_dir": "/storage/pretrain/vcr-electra-mrfr-indomain-test",
     "mrm_prob": 0.15,
     "max_txt_len": 220,
     "conf_th": 0.2,
@@ -39,7 +39,7 @@
                 "/img/vcr_gt_train/;/img/vcr_train/"
             ],
             "tasks": [
-                "mlm"
+                "mrfr"
             ],
             "mix_ratio": [
                 1
@@ -56,7 +56,7 @@
                 "/img/vcr_gt_val/;/img/vcr_val/"
             ],
             "tasks": [
-                "mlm"
+                "mrfr"
             ]
         }
     ],

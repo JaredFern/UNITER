@@ -88,14 +88,13 @@ def main(opts):
     meta_loader = PrefetchLoader(meta_loader)
 
     # Prepare model
-    if opts.checkpoint:
-        ckpt = torch.load(opts.checkpoint)
-    else:
-        ckpt = {}
+    gen_ckpt = torch.load(opts.gen_checkpoint) if opts.gen_checkpoint else {}
+    disc_ckpt = torch.load(opts.disc_checkpoint) if opts.disc_checkpoint else {}
+
     model = UniterForElectraPretraining(
-        opts.model_config, ckpt, img_dim=IMG_DIM, img_label_dim=IMG_LABEL_DIM)
-    model.generator.init_type_embedding()
-    model.generator.init_word_embedding(NUM_SPECIAL_TOKENS)
+        opts.gen_model_config, opts.model_config, gen_ckpt, disc_ckpt,
+        img_dim=IMG_DIM, img_label_dim=IMG_LABEL_DIM)
+
     model.discriminator.init_type_embedding()
     model.discriminator.init_word_embedding(NUM_SPECIAL_TOKENS)
     model.to(device)
@@ -352,10 +351,13 @@ if __name__ == "__main__":
     parser.add_argument('--compressed_db', action='store_true',
                         help='use compressed LMDB')
 
+    parser.add_argument("--gen_model_config", type=str,
+                        help="path to model structure config json")
+    parser.add_argument("--gen_checkpoint", default=None, type=str,
+                        help="path to model checkpoint (*.pt)")
     parser.add_argument("--model_config", type=str,
                         help="path to model structure config json")
-    parser.add_argument("--checkpoint", default=None, type=str,
-                        help="path to model checkpoint (*.pt)")
+    parser.add_argument("--disc_checkpoint", default=None, type=str)
 
     parser.add_argument(
         "--output_dir", default=None, type=str,
